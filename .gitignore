@@ -2,3 +2,4 @@
 node_modules
 coverage
 keyfile3.json
+.env

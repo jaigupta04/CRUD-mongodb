@@ -1,59 +1,66 @@
-const express = require('express');
-const app     = express();
-const cors    = require('cors');
-const { createDocument, readDocument, updateDocument, deleteDocument } = require('./firestoreOperations');
+const express  = require('express');
+const mongoose = require('mongoose');
+const cors     = require('cors');
 
+const app = express();
 app.use(cors());
 app.use(express.json());
+require('dotenv').config();
 
-// Create a document
-app.post('/create', async (req, res) => {
+// Connect to MongoDB  
+mongoose.connect(process.env.DATABASE_URL);
+    
+// Simple schema for the data
+const Item = mongoose.model('Item', new mongoose.Schema({
+    name: String,
+    description: String
+}));
+
+app.get('/', async (req, res) => {
+
+    res.send('Hello NodeJs !');
+  
+});
+
+// Create operation
+app.post('/items', async (req, res) => {
   try {
-    const { collection, data } = req.body;
-    const docId = await createDocument(collection, data);
-    res.status(201).json({ message: 'Document created successfully', docId });
+    const newItem = new Item(req.body);
+    await newItem.save();
+    res.status(201).json(newItem);
   } catch (error) {
-    console.error(error);
-    res.status(500).send(`Internal Server Error: ${error.message}`);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Read a document
-app.get('/read/:collection/:docId', async (req, res) => {
+// Read operation
+app.get('/items', async (req, res) => {
   try {
-    const { collection, docId } = req.params;
-    await readDocument(collection, docId);
-    res.status(200).json(documentList);
+    const items = await Item.find();
+    res.json(items);
   } catch (error) {
-    console.error(error);
-    res.status(500).send('Internal Server Error');
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Update a field in a document
-app.put('/update/:collection/:docId', async (req, res) => {
+// Update operation
+app.put('/items/:id', async (req, res) => {
   try {
-    const { collection, docId } = req.params;
-    const newData = req.body; 
-    await updateDocument(collection, docId, newData);
-    res.status(200).json({ message: 'Document updated successfully' });
+    const updatedItem = await Item.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updatedItem);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Delete a document
-app.delete('/delete/:collection/:docId', async (req, res) => {
+// Delete operation
+app.delete('/items/:id', async (req, res) => {
   try {
-    const { collection, docId } = req.params;
-    await deleteDocument(collection, docId);
-    res.status(200).json({ message: 'Document deleted successfully' });
+    await Item.findByIdAndDelete(req.params.id);
+    res.sendStatus(204);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: error.message });
   }
 });
-
 
 module.exports = app;
